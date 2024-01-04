@@ -1,5 +1,5 @@
 ---
-- hosts: ansible01
+- hosts: ansible02
   become: yes
   vars:
       ansible_python_interpreter: /home/terachi/anaconda3/bin/python
@@ -100,16 +100,25 @@
     - name: Update /etc/my.cnf
       lineinfile:
         path: /etc/my.cnf
-        line: "{{ item }}"
-      with_items:
-        - "character_set_server=utf8"
-        - "default_password_lifetime=0"
-        - "validate_password.policy=LOW"
-        - "validate_password.length=4"
-        - "log_timestamps=system"
-        - "innodb_buffer_pool_size=1024M"
-        - "innodb_log_file_size=64M"
-        - "innodb_lock_wait_timeout=900"
+        line: "{{ item.line }}"
+        insertbefore: "{{ item.before }}"
+      loop:
+        - line: "character_set_server=utf8"
+          before: "^datadir"
+        - line: "default_password_lifetime=0"
+          before: "^datadir"
+        - line: "validate_password.policy=LOW"
+          before: "^datadir"
+        - line: "validate_password.length=4"
+          before: "^datadir"
+        - line: "log_timestamps=system"
+          before: "^datadir"
+        - line: "innodb_buffer_pool_size=1024M"
+          before: "^datadir"
+        - line: "innodb_log_file_size=64M"
+          before: "^datadir"
+        - line: "innodb_lock_wait_timeout=900"
+          before: "^datadir"
     
     - name: Install necessary Python modules
       pip:
@@ -125,121 +134,23 @@
       service:
         name: mysqld
         state: restarted
-    
-    - name: Create MySQL user
-      mysql_user:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm
-        password: slurm
-        host: localhost
 
-    - name: Create MySQL database
-      mysql_db:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm_acct_db
-        state: present
-
-    - name: Grant privileges to the user
-      mysql_user:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm
-        host: localhost
-        priv: 'slurm_acct_db.*:ALL'
-        append_privs: yes
+#以下の部分は ログインに失敗したため、手動で実行する
+# 先にパスワードを変更しないと実行出来なかった
+# sudo mysql_secure_installation 
+# sudo mysql -u root -p
+#mysql> create user 'slurm'@'localhost' identified by 'slurm';
+#Query OK, 0 rows affected (0.01 sec)
+#
+#mysql> create database slurm_acct_db;
+#Query OK, 1 row affected (0.01 sec)
+#
+#mysql> grant all on slurm_acct_db.* to slurm@localhost;
+#Query OK, 0 rows affected (0.02 sec)
 
     - name: update yum
       yum:
         name: '*'
         state: latest
 
-    # 本来ここには、yum localinstall -y https://dev.mysql.com/get/mysql80-community-release-el7-3.noarch.rpm
-    # 　を実行するための記述を入れたいが、エラーになるので一旦スキップ
-    # 事前に上記を実行しておく事
-    - name: install mysql repo
-      become: yes
-      shell: yum localinstall -y https://dev.mysql.com/get/mysql80-community-release-el7-3.noarch.rpm
-
-    - name: install mysql
-      become: yes
-      yum:
-        name:
-          - mysql-community-server
-          - mysql-devel
-        state: present
-
-    - name: enable mysqld
-      service:
-        name: mysqld
-        enabled: yes
-
-    - name: start mysqld
-      service:
-        name: mysqld
-        state: started
-
-    - name: Extract temporary password line
-      shell: grep 'root@localhost' /var/log/mysqld.log
-      register: temp_password_line
-
-    - name: Set sqlpassword variable
-      set_fact:
-        sqlpassword: "{{ temp_password_line.stdout | regex_search('root@localhost: (.*?)$', '\\1') }}"
-
-    - name: Display sqlpassword
-      debug:
-        var: sqlpassword
-
-    - name: Update /etc/my.cnf
-      lineinfile:
-        path: /etc/my.cnf
-        line: "{{ item }}"
-      with_items:
-        - "character_set_server=utf8"
-        - "default_password_lifetime=0"
-        - "validate_password.policy=LOW"
-        - "validate_password.length=4"
-        - "log_timestamps=system"
-        - "innodb_buffer_pool_size=1024M"
-        - "innodb_log_file_size=64M"
-        - "innodb_lock_wait_timeout=900"
-
-    - name: Install necessary Python modules
-      pip:
-        name: PyMySQL
-        executable: /home/terachi/anaconda3/bin/pip
-  
-    - name: Check PyMySQL installation
-      command: /home/terachi/anaconda3/bin/python -c "import pymysql"
-
-    - name: Restart mysqld
-      service:
-        name: mysqld
-        state: restarted
-
-    - name: Create MySQL user
-      mysql_user:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm
-        password: slurm
-        host: localhost
-
-    - name: Create MySQL database
-      mysql_db:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm_acct_db
-        state: present
-
-    - name: Grant privileges to the user
-      mysql_user:
-        login_user: root
-        login_password: "{{ sqlpassword }}"
-        name: slurm
-        host: localhost
-        priv: 'slurm_acct_db.*:ALL'
-        append_privs: yes
-
+ 

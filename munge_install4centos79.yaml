@@ -1,0 +1,54 @@
+- hosts: ansible02
+  become: yes
+  tasks:
+    - name: Download munge
+      get_url:
+        url: https://github.com/dun/munge/releases/download/munge-0.5.14/munge-0.5.14.tar.xz
+        dest: /tmp/munge-0.5.14.tar.xz
+
+    - name: Install bzip2-devel
+      yum:
+        name: bzip2-devel
+        state: present
+      become: yes
+
+    - name: Download dun.gpg
+      get_url:
+        url: https://github.com/dun.gpg
+        dest: /tmp/dun.gpg
+
+    - name: Download munge-0.5.14.tar.xz.asc
+      get_url:
+        url: https://github.com/dun/munge/releases/download/munge-0.5.14/munge-0.5.14.tar.xz.asc
+        dest: /tmp/munge-0.5.14.tar.xz.asc
+    #rpmbuild がない場合
+    # yum install rpm-build rpmdevtools make gcc
+    - name: Build RPM
+      command: rpmbuild -tb /tmp/munge-0.5.14.tar.xz
+
+#以下はエラーになるので、手動で実施
+# rpm -ivh munge-0.5.14-1.el7.x86_64.rpm munge-devel-0.5.14-1.el7.x86_64.rpm munge-libs-0.5.14-1.el7.x86_64.rpm 
+#rpm -ivh munge-debuginfo-0.5.14-1.el7.x86_64.rpm
+    - name: Install munge RPMs
+      become: yes
+      shell:
+        cmd: rpm -ivh {{ item }} || echo "already installed"
+      loop:
+        - /root/rpmbuild/RPMS/x86_64/munge-libs-0.5.14-1.el7.x86_64.rpm
+        - /root/rpmbuild/RPMS/x86_64/munge-debuginfo-0.5.14-1.el7.x86_64.rpm
+        - /root/rpmbuild/RPMS/x86_64/munge-devel-0.5.14-1.el7.x86_64.rpm
+        - /root/rpmbuild/RPMS/x86_64/munge-0.5.14-1.el7.x86_64.rpm
+      register: result
+      failed_when: result.rc != 0 and "already installed" not in result.stdout
+#終わったとキーの発行
+#sudo -u munge /usr/sbin/mungekey -v
+    - name: Remove existing munge key if it exists
+      become: yes
+      file:
+        path: /etc/munge/munge.key
+        state: absent
+
+    - name: Run mungekey as munge user
+      become: yes
+      become_user: munge
+      command: /usr/sbin/mungekey -v

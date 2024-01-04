@@ -1,0 +1,19 @@
+---
+- name: first step
+  hosts: ansible02
+  become: yes
+  tasks:
+    - name: Remove git
+      command: yum -y remove git
+  
+    - name: Remove ius-release and epel-release
+      become: yes
+      command: sudo yum -y remove ius-release epel-release
+
+    - name: Install ius-release and epel-release
+      become: yes
+      command: sudo yum -y install https://repo.ius.io/ius-release-el7.rpm https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+    - name: Install git236
+      become: yes
+      command: yum -y install git236

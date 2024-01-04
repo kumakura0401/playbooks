@@ -1,5 +1,5 @@
 - name: Install NFS
-  hosts: ansible01
+  hosts: ansible02
   become: yes
   tasks:
     - name: Install NFS package
@@ -62,21 +62,18 @@
       loop:
         - ypserv
         - yppasswdd
-
-#    - name: Initialize NIS database
-#      expect:
-#        command: /usr/lib64/yp/ypinit -m
-#        responses:
-#          "next host to add: ": "\003"
-#          "Is this correct? ": "y"
-#        timeout: 60
     
-    - name: Remove git
-      command: yum -y remove git
-    
-#    - name: Install IUS release package
-#      command: yum -y install https://repo.ius.io/ius-release-el7.rpm
-    
-    - name: Install git236
+    - name: Upgrade pexpect
       become: yes
-      command: yum -y install git236
+      pip:
+        name: pexpect
+        state: latest
+        
+    - name: Initialize NIS database
+      expect:
+        command: /usr/lib64/yp/ypinit -m
+        responses:
+          "next host to add: ": "\003"
+          "Is this correct? ": "y"
+        timeout: 60
+    
