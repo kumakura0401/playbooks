@@ -1,0 +1,55 @@
+- name: Install Slurm on node01
+  hosts: node01
+  become: true
+
+  tasks:
+    - name: Install Slurmd
+      apt:
+        name: slurmd
+        state: present
+
+    - name: Install Slurmctld
+      apt:
+        name: slurmctld
+        state: present
+
+    - name: Sync slurm.conf from master01 to node01
+      synchronize:
+        src: /etc/slurm/slurm.conf
+        dest: /etc/slurm/
+      delegate_to: master01
+    
+    - name: Run slurmd -C and save the output
+      command: slurmd -C
+      register: slurmd_output
+      changed_when: False
+
+    - name: Get the first line of the output
+      set_fact:
+        slurmd_first_line: "{{ slurmd_output.stdout_lines[0] }}"
+    
+    - name: Add slurmd_first_line after the last NodeName line in slurm.conf
+      lineinfile:
+        path: /etc/slurm/slurm.conf
+        insertafter: '^NodeName='
+        line: "{{ slurmd_first_line }}"
+    
+    - name: Start slurmd service
+      systemd:
+        name: slurmd
+        state: started
+
+    - name: Check the status of slurmd service
+      command: systemctl status slurmd
+      register: slurmd_status
+      changed_when: False
+
+    - name: Display the status of slurmd service
+      debug:
+        var: slurmd_status.stdout_lines
+
+
+
+    
+    
+

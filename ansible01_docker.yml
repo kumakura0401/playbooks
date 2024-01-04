@@ -1,0 +1,36 @@
+- hosts: ansible01
+  become: yes
+  tasks:
+    - name: Install required packages
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - ca-certificates
+        - curl
+        - gnupg2
+
+    - name: Add Docker GPG key
+      rpm_key:
+        key: https://download.docker.com/linux/centos/gpg
+        state: present
+
+    - name: Add Docker repository
+      yum_repository:
+        name: Docker-ce
+        description: Docker CE Stable
+        baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+        gpgcheck: yes
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        enabled: yes
+
+    - name: Install Docker
+      yum:
+        name: docker-ce
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes

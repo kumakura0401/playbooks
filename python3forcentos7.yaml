@@ -1,0 +1,55 @@
+---
+- hosts: ansible01
+  become: yes
+  tasks:
+    - name: Update all packages
+      yum:
+        name: '*'
+        state: latest
+
+    - name: Install development tools
+      yum:
+        name: "@Development Tools"
+        state: present
+
+    - name: Install necessary packages
+      yum:
+        name:
+          - openssl-devel
+          - libffi-devel
+          - bzip2-devel
+          - wget
+        state: present
+
+    - name: Download Python 3.9.2
+      get_url:
+        url: https://www.python.org/ftp/python/3.9.2/Python-3.9.2.tgz
+        dest: /tmp/Python-3.9.2.tgz
+
+    - name: Extract Python 3.9.2 tarball
+      unarchive:
+        src: /tmp/Python-3.9.2.tgz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Configure Python 3.9.2
+      command:
+        cmd: ./configure --enable-optimizations
+        chdir: /tmp/Python-3.9.2
+
+    - name: Make and install Python 3.9.2
+      make:
+        target: altinstall
+        chdir: /tmp/Python-3.9.2
+    
+    - name: Check Python version immediately after installation
+      command: /usr/local/bin/python3.9 --version
+      register: python_version
+    - debug: var=python_version.stdout_lines
+
+    - name: Check Python version in a new shell session
+      shell: |
+        source ~/.bashrc
+        python3.9 --version
+      register: python_version_in_new_session
+    - debug: var=python_version_in_new_session.stdout_lines

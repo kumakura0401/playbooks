@@ -1,0 +1,50 @@
+- name: Setup NFS client on node01
+  hosts: node01
+  become: true
+  tasks:
+    - name: Install NFS client
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Create directory for NFS mount
+      file:
+        path: /share/workspaces
+        state: directory
+
+    - name: Mount NFS share
+      mount:
+        src: ansible01:/share/workspaces
+        path: /share/workspaces
+        fstype: nfs
+        state: mounted
+
+    - name: Install NIS client
+      apt:
+        name: nis
+        state: present
+
+    - name: Configure yp.conf
+      lineinfile:
+        path: /etc/yp.conf
+        line: 'domain hoge server ansible01'
+
+    - name: Update nsswitch.conf
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^(passwd|group|shadow|hosts):'
+        line: '\1: files nis'
+
+    - name: Update pam.d/common-session
+      lineinfile:
+        path: /etc/pam.d/common-session
+        line: 'session optional pam_mkhomedir.so skel=/etc/skel umask=077'
+
+    - name: Restart services
+      systemd:
+        name: '{{ item }}'
+        state: restarted
+      loop:
+        - rpcbind
+        - nscd
+        - ypbind
