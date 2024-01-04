@@ -26,7 +26,6 @@
     - name: Build RPM
       command: rpmbuild -tb /tmp/munge-0.5.14.tar.xz
 
-#以下はエラーになるので、手動で実施
 # rpm -ivh munge-0.5.14-1.el7.x86_64.rpm munge-devel-0.5.14-1.el7.x86_64.rpm munge-libs-0.5.14-1.el7.x86_64.rpm 
 #rpm -ivh munge-debuginfo-0.5.14-1.el7.x86_64.rpm
     - name: Install munge RPMs

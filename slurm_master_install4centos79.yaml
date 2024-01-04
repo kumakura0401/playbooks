@@ -1,0 +1,138 @@
+- hosts: ansible02
+  become: yes
+  tasks:
+    - name: Download slurm package
+      get_url:
+        url: https://download.schedmd.com/slurm/slurm-21.08.8-2.tar.bz2
+        dest: /tmp/slurm-21.08.8-2.tar.bz2
+
+    - name: Install dependencies
+      become: yes
+      yum:
+        name:
+          - python3
+          - readline-devel
+          - perl-ExtUtils-MakeMaker
+          - pam-devel
+          - perl-Switch
+        state: present
+
+    - name: Build slurm RPM
+      become: yes
+      command: rpmbuild -ta /tmp/slurm-21.08.8-2.tar.bz2
+
+    - name: Install slurm RPMs
+      become: yes
+      shell:
+        cmd: rpm -ivh {{ item }} || echo "already installed"
+      loop:
+          - /root/rpmbuild/RPMS/x86_64/slurm-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-contribs-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-devel-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-example-configs-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-libpmi-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-openlava-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-pam_slurm-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-perlapi-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-slurmctld-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-slurmdbd-21.08.8-2.el7.x86_64.rpm
+          - /root/rpmbuild/RPMS/x86_64/slurm-torque-21.08.8-2.el7.x86_64.rpm
+      register: result
+      failed_when: result.rc != 0 and "already installed" not in result.stdout
+    
+    - name: Copy slurmctld.service
+      become: yes
+      copy:
+        src: /root/rpmbuild/BUILD/slurm-21.08.8-2/etc/slurmctld.service
+        dest: /usr/lib/systemd/system/
+        owner: root
+        group: root
+        mode: preserve
+        remote_src: yes
+
+    - name: Copy slurmdbd.service
+      become: yes
+      copy:
+        src: /root/rpmbuild/BUILD/slurm-21.08.8-2/etc/slurmdbd.service
+        dest: /usr/lib/systemd/system/
+        owner: root
+        group: root
+        mode: preserve
+        remote_src: yes
+
+    - name: Copy slurm.conf.example
+      become: yes
+      copy:
+        src: /etc/slurm/slurm.conf.example
+        dest: /etc/slurm/slurm.conf
+        owner: slurm
+        group: slurm
+        mode: preserve
+        remote_src: yes
+
+    - name: Copy slurmdbd.conf.example
+      become: yes
+      copy:
+        src: /etc/slurm/slurmdbd.conf.example
+        dest: /etc/slurm/slurmdbd.conf
+        owner: slurm
+        group: slurm
+        mode: preserve
+        remote_src: yes
+
+    - name: Change permissions of slurmdbd.conf
+      become: yes
+      file:
+        path: /etc/slurm/slurmdbd.conf
+        mode: 0600
+    
+    - name: Update StoragePass in slurmdbd.conf
+      become: yes
+      lineinfile:
+        path: /etc/slurm/slurmdbd.conf
+        regexp: '^StoragePass='
+        line: 'StoragePass=slurm'
+    
+    - name: Create /var/log/slurm directory
+      become: yes
+      file:
+        path: /var/log/slurm
+        state: directory
+    
+    - name: Enable and start slurmdbd service
+      become: yes
+      systemd:
+        name: slurmdbd
+        enabled: yes
+        state: started
+
+    - name: Check status of slurmdbd service
+      become: yes
+      command: systemctl status slurmdbd
+      register: slurmdbd_status
+      changed_when: false
+
+    - name: Display slurmdbd service status
+      debug:
+        var: slurmdbd_status.stdout_lines
+    
+    - name: Comment out NodeName and SlurmctldHost in slurm.conf
+      become: yes
+      lineinfile:
+        path: /etc/slurm/slurm.conf
+        regexp: "{{ item }}"
+        line: "#{{ item }}"
+      with_items:
+        - 'NodeName=linux[1-32] CPUs=1 State=UNKNOWN'
+        - 'SlurmctldHost=linux0'
+
+    - name: Add ControlMachine and ControlAddr in slurm.conf
+      become: yes
+      blockinfile:
+        path: /etc/slurm/slurm.conf
+        block: |
+          ControlMachine=master01
+          ControlAddr=192.168.20.102
+        insertafter: 'ClusterName=cluster'
+        
