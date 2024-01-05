@@ -1,5 +1,5 @@
 - name: Setup NFS client on node01
-  hosts: node01
+  hosts: node_all
   become: true
   tasks:
     - name: Install NFS client
@@ -12,12 +12,6 @@
         path: /share/workspaces
         state: directory
 
-    - name: Mount NFS share
-      mount:
-        src: ansible01:/share/workspaces
-        path: /share/workspaces
-        fstype: nfs
-        state: mounted
 
     - name: Install NIS client
       apt:
@@ -27,7 +21,7 @@
     - name: Configure yp.conf
       lineinfile:
         path: /etc/yp.conf
-        line: 'domain hoge server ansible01'
+        line: 'domain hoge server ansible02'
 
     - name: Update nsswitch.conf
       lineinfile:
@@ -48,3 +42,10 @@
         - rpcbind
         - nscd
         - ypbind
+
+    - name: Mount NFS share
+      mount:
+        src: ansible02:/share/workspaces
+        path: /share/workspaces
+        fstype: nfs
+        state: mounted

@@ -1,5 +1,5 @@
 - name: Install Slurm on node01
-  hosts: node01
+  hosts: node_all
   become: true
 
   tasks:
@@ -13,11 +13,11 @@
         name: slurmctld
         state: present
 
-    - name: Sync slurm.conf from master01 to node01
+    - name: Sync slurm.conf from master01 to node_all
       synchronize:
         src: /etc/slurm/slurm.conf
         dest: /etc/slurm/
-      delegate_to: master01
+      delegate_to: ansible02
     
     - name: Run slurmd -C and save the output
       command: slurmd -C
@@ -47,6 +47,7 @@
     - name: Display the status of slurmd service
       debug:
         var: slurmd_status.stdout_lines
+
 
 
 
