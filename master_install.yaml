@@ -1,6 +1,12 @@
 - name: Install NFS
   hosts: ansible02
   become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
   tasks:
     - name: Install NFS package
       yum:
