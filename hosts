@@ -5,3 +5,9 @@
 [node_all]
 192.168.20.120
 192.168.20.121
+[slurm_master]
+192.168.20.124 ansible_python_interpreter=/home/terachi/anaconda3/bin/python
+[slurm_node4centos]
+192.168.20.125
+[slurm_node4ubuntu]
+192.168.20.123

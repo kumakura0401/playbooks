@@ -1,5 +1,13 @@
-- hosts: ansible02
+---
+- name: slurm installation
+  hosts: slurm_master
   become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
   tasks:
     - name: Download slurm package
       get_url:
@@ -132,7 +140,7 @@
       blockinfile:
         path: /etc/slurm/slurm.conf
         block: |
-          ControlMachine=master01
-          ControlAddr=192.168.20.102
+          ControlMachine=slurm01
+          ControlAddr=192.168.20.124
         insertafter: 'ClusterName=cluster'
         

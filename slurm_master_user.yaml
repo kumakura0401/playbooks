@@ -1,0 +1,37 @@
+---
+- name: create user
+  hosts: slurm_master
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+  tasks:
+    - name: add group slurm
+      group:
+        name: slurm
+        gid: 2000
+
+    - name: add user slurm
+      user:
+        name: slurm
+        uid: 2000
+        group: slurm
+        home: /home/slurm
+        shell: /bin/bash
+
+    - name: add group munge
+      group:
+        name: munge
+        gid: 2020
+
+    - name: add user munge
+      user:
+        name: munge
+        uid: 2020
+        group: munge
+        home: /home/munge
+        shell: /bin/bash
+

@@ -1,5 +1,5 @@
 - name: Install NFS
-  hosts: ansible02
+  hosts: slurm_master
   become: yes
   vars_files:
     - password.yaml
@@ -70,16 +70,17 @@
         - yppasswdd
     
     - name: Upgrade pexpect
-      become: yes
       pip:
         name: pexpect
         state: latest
-        
-    - name: Initialize NIS database
-      expect:
-        command: /usr/lib64/yp/ypinit -m
-        responses:
-          "next host to add: ": "\003"
-          "Is this correct? ": "y"
-        timeout: 60
+
+#    - name: Initialize NIS database
+#      become: yes
+#      expect:
+#        command: /usr/lib64/yp/ypinit -m
+#        responses:
+#           "	next host to add:  ": "\003"
+#          "Is this correct" : "y"
+#        echo: yes
+#        timeout: 60
     

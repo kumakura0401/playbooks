@@ -1,45 +1,14 @@
 ---
-- hosts: ansible02
+- name: install mysql
+  hosts: slurm_master
   become: yes
+  vars_files:
+    - password.yaml
   vars:
-      ansible_python_interpreter: /home/terachi/anaconda3/bin/python
-
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
   tasks:
-    - name: setenforce 0
-      command: setenforce 0
-
-    - name: stop firewalld
-      service:
-        name: firewalld
-        state: stopped
-        enabled: no
-
-    - name: add group slurm
-      group:
-        name: slurm
-        gid: 2000
-
-    - name: add user slurm
-      user:
-        name: slurm
-        uid: 2000
-        group: slurm
-        home: /home/slurm
-        shell: /bin/bash
-
-    - name: add group munge
-      group:
-        name: munge
-        gid: 2020
-
-    - name: add user munge
-      user:
-        name: munge
-        uid: 2020
-        group: munge
-        home: /home/munge
-        shell: /bin/bash
-
     - name: remove mysql*
       yum:
         name: mysql*
@@ -91,11 +60,12 @@
 
     - name: Set sqlpassword variable
       set_fact:
-        sqlpassword: "{{ temp_password_line.stdout | regex_search('root@localhost: (.*?)$', '\\1') }}"
-    
+        sqlpassword: "{{ temp_password_line.stdout | regex_search('root@localhost: (.*?)$', '\\1') | regex_replace('\\[|\\]', '') }}"
+
     - name: Display sqlpassword
       debug:
         var: sqlpassword
+    
     
     - name: Update /etc/my.cnf
       lineinfile:
@@ -119,7 +89,17 @@
           before: "^datadir"
         - line: "innodb_lock_wait_timeout=900"
           before: "^datadir"
-    
+
+    - name: Add client section to /etc/my.cnf
+      blockinfile:
+        path: /etc/my.cnf
+        block: |
+          [client]
+          user=root
+          password={{ sqlpassword }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        insertafter: EOF
+
     - name: Install necessary Python modules
       pip:
         name: "{{ item }}"
@@ -134,23 +114,22 @@
       service:
         name: mysqld
         state: restarted
+    
+    - name: copy create_user.sql
+      copy:
+        src: /home/terachi/workspace/playbooks/create_user.sql
+        dest: /tmp/create_user.sql
 
-#以下の部分は ログインに失敗したため、手動で実行する
-# 先にパスワードを変更しないと実行出来なかった
-# sudo mysql_secure_installation 
-# sudo mysql -u root -p
-#mysql> create user 'slurm'@'localhost' identified by 'slurm';
-#Query OK, 0 rows affected (0.01 sec)
-#
-#mysql> create database slurm_acct_db;
-#Query OK, 1 row affected (0.01 sec)
-#
-#mysql> grant all on slurm_acct_db.* to slurm@localhost;
-#Query OK, 0 rows affected (0.02 sec)
+# sudo mysql_secure_installation
+# を実行しパスワードを変更する
+# その上で以下を実行
+# sudo mysql -u root -p < /tmp/create_user.sql
 
-    - name: update yum
-      yum:
-        name: '*'
-        state: latest
+# /etc/my.confのパスワードも変更する
+#    - name: Import SQL file
+#      shell: mysql -u root   < /tmp/create_user.sql
+
+
+
 
  

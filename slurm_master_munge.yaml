@@ -1,0 +1,42 @@
+---
+- name: munge installation
+  hosts: slurm_master
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+  tasks:
+    - name: Install bzip2-devel
+      yum:
+        name: bzip2-devel
+        state: present
+
+    - name: Download munge
+      get_url:
+        url: https://github.com/dun/munge/releases/download/munge-0.5.14/munge-0.5.14.tar.xz
+        dest: /tmp/munge-0.5.14.tar.xz
+
+    - name: Download dun.gpg
+      get_url:
+        url: https://github.com/dun.gpg
+        dest: /tmp/dun.gpg
+
+    - name: Download munge asc
+      get_url:
+        url: https://github.com/dun/munge/releases/download/munge-0.5.14/munge-0.5.14.tar.xz.asc
+        dest: /tmp/munge-0.5.14.tar.xz.asc
+
+    - name: Build RPM package
+      command: rpmbuild -tb /tmp/munge-0.5.14.tar.xz
+    
+    - name: Install munge RPM packages
+      command: rpm -ivh /root/rpmbuild/RPMS/x86_64/munge-0.5.14-1.el7.x86_64.rpm /root/rpmbuild/RPMS/x86_64/munge-devel-0.5.14-1.el7.x86_64.rpm /root/rpmbuild/RPMS/x86_64/munge-libs-0.5.14-1.el7.x86_64.rpm
+
+    - name: Install munge debuginfo RPM package
+      command: rpm -ivh /root/rpmbuild/RPMS/x86_64/munge-debuginfo-0.5.14-1.el7.x86_64.rpm
+
+    - name: Generate munge key
+      command: sudo -u munge /usr/sbin/mungekey -v
