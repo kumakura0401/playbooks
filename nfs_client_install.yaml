@@ -1,6 +1,12 @@
-- name: Setup NFS client on node01
-  hosts: node_all
-  become: true
+- name: Setup NFS client 
+  hosts: slurm_node4centos
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
   tasks:
     - name: Install NFS client
       apt:
@@ -21,13 +27,18 @@
     - name: Configure yp.conf
       lineinfile:
         path: /etc/yp.conf
-        line: 'domain hoge server ansible02'
+        line: 'domain hoge server ansible03'
 
+#    - name: Update nsswitch.conf
+#      lineinfile:
+#        path: /etc/nsswitch.conf
+#        regexp: '^(passwd|group|shadow|hosts):'
+#        line: '\1: files nis' 
     - name: Update nsswitch.conf
       lineinfile:
         path: /etc/nsswitch.conf
-        regexp: '^(passwd|group|shadow|hosts):'
-        line: '\1: files nis'
+        regexp: '^(passwd|group|shadow|hosts):\s+files.*'
+        line: '\1: files sss nis'
 
     - name: Update pam.d/common-session
       lineinfile:

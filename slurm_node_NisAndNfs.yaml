@@ -1,0 +1,59 @@
+- name: Setup NFS client 
+  hosts: slurm_node4centos
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+    nis_domain: hoge
+    nis_server: slurm01
+  tasks:
+    - name: Install NFS client
+      yum:
+        name: nfs-utils
+        state: present
+
+    - name: Create directory for NFS mount
+      file:
+        path: /share/workspaces
+        state: directory
+
+    - name: Install NIS client
+      yum:
+        name:
+          - yp-tools 
+          - ypbind
+          - rpcbind
+        state: present
+
+    - name: Add NISDOMAIN to /etc/sysconfig/network
+      lineinfile:
+        path: /etc/sysconfig/network
+        line: 'NISDOMAIN={{ nis_domain }}'
+        create: yes
+
+    - name: Configure yp.conf
+      lineinfile:
+        path: /etc/yp.conf
+        line: 'domain {{ nis_domain }} server {{ nis_server }}}}'
+    
+    - name: Configure NIS with authconfig
+      command:
+        cmd: >
+          authconfig 
+          --enablenis 
+          --nisdomain={{ nis_domain }} 
+          --nisserver={{ nis_server }}
+          --enablemkhomedir 
+          --update
+
+    - name: Restart and enable rpcbind and ypbind
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - rpcbind
+        - ypbind

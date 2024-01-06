@@ -1,0 +1,18 @@
+###
+#
+# Slurm cgroup support configuration file
+#
+# See man slurm.conf and man cgroup.conf for further
+# information on cgroup configuration parameters
+#--
+CgroupAutomount=yes
+CgroupMountpoint=/sys/fs/cgroup
+ConstrainCores=yes
+ConstrainDevices=yes
+#ConstrainKmemSpaces=no
+ConstrainRAMSpace=yes
+#ConstrainSwapSpaces=yes
+TaskAffinity=no
+
+AllowedDevicesFile="/etc/slurm/cgroup_allowed_devices.conf"
+

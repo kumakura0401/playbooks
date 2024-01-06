@@ -11,7 +11,7 @@
   tasks:
     - name: Install bzip2-devel
       yum:
-        name: bzip2-devel
+        name: ßbzip2-devel
         state: present
 
     - name: Download munge

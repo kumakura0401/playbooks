@@ -1,0 +1,102 @@
+---
+- name: munge installation
+  hosts: slurm_node4centos
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+  tasks:
+    - name: Download slurm package
+      get_url:
+        url: https://download.schedmd.com/slurm/slurm-21.08.8-2.tar.bz2
+        dest: /tmp/slurm-21.08.8-2.tar.bz2
+
+    - name: Install dependencies
+      become: yes
+      yum:
+        name:
+          - python3
+          - readline-devel
+          - perl-ExtUtils-MakeMaker
+          - pam-devel
+          - perl-Switch
+        state: present
+
+    - name: Copy rpm from slurm01 to control node
+      fetch:
+        src: /root/rpmbuild/RPMS/x86_64/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
+        dest: /tmp/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
+      delegate_to: slurm01
+      register: rpm_path
+    
+    - name: debug
+      debug:
+        msg: "{{ rpm_path }}"
+
+    - name: Install slurm RPMs
+      become: yes
+      shell:
+        cmd: rpm -ivh {{ rpm_path.dest }} || echo "already installed"
+      register: result
+      failed_when: result.rc != 0 and "already installed" not in result.stdout
+    
+    - name: Copy slurmd.service
+      become: yes
+      copy:
+        src: /root/rpmbuild/BUILD/slurm-21.08.8-2/etc/slurmd.service
+        dest: /usr/lib/systemd/system/
+        owner: root
+        group: root
+        mode: preserve
+        remote_src: yes
+    
+    - name: Copy slurm01 from slurm01 to control node
+      fetch:
+        src: /etc/slurm/slurm.conf
+        dest: /tmp/slurm.conf
+      delegate_to: slurm01
+      register: slurm_path
+    
+    - name: debug
+      debug:
+        msg: "{{ slurm_path }}"
+    
+    - name: Create /etc/slurm directory
+      file:
+        path: /etc/slurm
+        state: directory
+    
+    - name: Copy slurm.conf from control node to target
+      copy:
+        src: "{{ slurm_path.dest }}"
+        dest: /etc/slurm/slurm.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Copy cgroup.conf from control node to target
+      copy:
+        src: cgroup.conf.node03
+        dest: /etc/slurm/cgroup.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Copy slurm.conf from control node to target
+      copy:
+        src: cgroup_allowed_devices.conf.node03
+        dest: /etc/slurm/cgroup_allowed_devices.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Create /var/spool/slurmd directory
+      file:
+        path: /var/spool/slurmd
+        owner: slurm
+        group: slurm
+        state: directory
+
