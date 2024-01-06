@@ -1,0 +1,59 @@
+- name: Setup NFS client 
+  hosts: slurm_node4ubuntu
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+    nis_domain: hoge
+    nis_server: slurm01
+  tasks:
+    - name: Install NFS client
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Create directory for NFS mount
+      file:
+        path: /share/workspaces
+        state: directory
+
+    - name: Install NIS client
+      apt:
+        name:
+          - nis
+        state: present
+    
+    - name: Configure yp.conf
+      lineinfile:
+        path: /etc/yp.conf
+        line: 'domain {{ nis_domain }} server {{ nis_server }}'
+    
+    - name: Set NIS domain to hoge
+      copy:
+        content: hoge
+        dest: /etc/defaultdomain
+    
+    - name: Add pam_mkhomedir to /etc/pam.d/common-session
+      lineinfile:
+        path: /etc/pam.d/common-session
+        line: 'session optional        pam_mkhomedir.so skel=/etc/skel umask=077'
+        insertafter: EOF
+    
+    - name: Start rpcbind service
+      systemd:
+        name: rpcbind
+        state: restarted
+
+    - name: Start nscd service
+      systemd:
+        name: nscd
+        state: restarted
+
+    - name: Start ypbind service
+      systemd:
+        name: ypbind
+        state: restarted
+    

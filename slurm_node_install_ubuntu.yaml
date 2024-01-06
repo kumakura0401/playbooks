@@ -1,0 +1,63 @@
+---
+- name: munge installation
+  hosts: slurm_node4ubuntu
+  become: yes
+  vars_files:
+    - password.yaml
+  vars:
+    ansible_become: yes
+    ansible_become_method: sudo
+    ansible_become_pass: "{{ vault_ansible_become_pass }}"
+  tasks:
+    - name: Install slurmd
+      apt:
+        name: slurmd
+        state: present
+    
+    - name: Copy slurm01 from slurm01 to control node
+      fetch:
+        src: /etc/slurm/slurm.conf
+        dest: /tmp/slurm.conf
+      delegate_to: slurm01
+      register: slurm_path
+    
+    - name: debug
+      debug:
+        msg: "{{ slurm_path }}"
+    
+    - name: Create /etc/slurm directory
+      file:
+        path: /etc/slurm
+        state: directory
+    
+    - name: Copy slurm.conf from control node to target
+      copy:
+        src: "{{ slurm_path.dest }}"
+        dest: /etc/slurm/slurm.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Copy cgroup.conf from control node to target
+      copy:
+        src: cgroup.conf.node03
+        dest: /etc/slurm/cgroup.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Copy slurm.conf from control node to target
+      copy:
+        src: cgroup_allowed_devices.conf.node03
+        dest: /etc/slurm/cgroup_allowed_devices.conf
+        owner: slurm
+        group: slurm 
+        mode: preserve
+
+    - name: Create /var/spool/slurmd directory
+      file:
+        path: /var/spool/slurmd
+        owner: slurm
+        group: slurm
+        state: directory
+

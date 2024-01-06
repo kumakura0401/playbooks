@@ -30,16 +30,21 @@
         src: /root/rpmbuild/RPMS/x86_64/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
         dest: /tmp/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
       delegate_to: slurm01
-      register: rpm_path
-    
-    - name: debug
-      debug:
-        msg: "{{ rpm_path }}"
+      register: slurmd_path
+    - name: Copy rpm from slurm01 to control node
+      fetch:
+        src: /root/rpmbuild/RPMS/x86_64/slurm-21.08.8-2.el7.x86_64.rpm
+        dest: /tmp/slurm-slurmd-21.08.8-2.el7.x86_64.rpm
+      delegate_to: slurm01
+      register: slurm_path
 
     - name: Install slurm RPMs
       become: yes
       shell:
-        cmd: rpm -ivh {{ rpm_path.dest }} || echo "already installed"
+        cmd: rpm -ivh {{ item }} || echo "already installed"
+      loop:
+          - "{{ slurm_path.dest }}"
+          - "{{ slurmd_path.dest }}"
       register: result
       failed_when: result.rc != 0 and "already installed" not in result.stdout
     
