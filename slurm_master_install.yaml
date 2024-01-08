@@ -101,6 +101,13 @@
         path: /etc/slurm/slurmdbd.conf
         regexp: '^StoragePass='
         line: 'StoragePass=slurm'
+
+    - name: Update AccountingStorageType in slurm.conf
+      become: yes
+      lineinfile:
+        path: /etc/slurm/slurm.conf
+        regexp: '^AccountingStorageType=accounting_storage/none'
+        line: 'AccountingStorageType=accounting_storage/slurmdbd'
     
     - name: Create /var/log/slurm directory
       become: yes
@@ -143,4 +150,11 @@
           ControlMachine=slurm01
           ControlAddr=192.168.20.124
         insertafter: 'ClusterName=cluster'
+    
+    - name: Update AccountingStorageType in slurm.conf
+      become: yes
+      lineinfile:
+        path: /etc/slurm/slurm.conf
+        regexp: '^AccountingStorageType=accounting_storage/none'
+        line: 'AccountingStorageType=accounting_storage/slurmdbd'
         
